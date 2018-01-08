@@ -14,22 +14,80 @@ namespace Merlin
 
         public static void LoadMods()
         {
-            string modsPath = GetModsPath();
+            Log("Merlin Initialized.", true);
 
-            foreach (var file in Directory.GetFiles(modsPath))
+            var listOfAllDlls = GetModFilesOf(GetModsPath());
+
+            foreach(var modfile in listOfAllDlls)
+            {
+                Log("Loading Mod File: " + modfile, false);
+                LoadModFile(modfile);
+            }
+        }
+
+
+
+        private static List<string> GetModFilesOf(string path)
+        {
+            var list = new List<string>();
+
+            //all Files in Directory
+
+            foreach (var file in Directory.GetFiles(path))
             {
                 if (file.EndsWith(".dll"))
                 {
                     try
                     {
-                        LoadMod(file);
+                        Log("Mod File Found: " + file, false);
+                        list.Add(file);
                     }
                     catch (Exception e)
                     {
                         Debug.Log(e);
                     }
                 }
-                    
+
+            }
+
+            //all Directories in Directory
+
+            foreach (var dir in Directory.GetDirectories(path))
+            {
+                try
+                {
+                    //recursion
+                    foreach(var file in GetModFilesOf(dir))
+                    {
+                        list.Add(file);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Debug.Log(e);
+                }
+            }
+
+            return list;
+        }
+
+        private static void Log(string logLine, bool clearFile)
+        {
+
+            string logPath = Path.Combine(GetModsPath(), "Merlin-log.txt");
+            try
+            {
+                if (clearFile)
+                {
+                    StreamWriter deleter = new StreamWriter(logPath);
+                    deleter.Close();
+                }
+                StreamWriter writer = new StreamWriter(logPath, true);
+                writer.WriteLine("[" + System.DateTime.Now + "] " + logLine);
+                writer.Close();
+            } catch(Exception e)
+            {
+                Debug.Log(e);
             }
         }
 
@@ -46,14 +104,30 @@ namespace Merlin
             return modDir;
         }
 
-        private static void LoadMod(string path)
+        private static void LoadModFile(string path)
         {
-            var assembly = Assembly.LoadFrom(path);
-            foreach (var type in FindModTypes(assembly))
+                var assembly = Assembly.LoadFrom(path);
+            try
             {
-                var mod = Activator.CreateInstance(type) as MerlinMod;
-                mod.OnLoad();
-                Mods.Add(mod);
+                foreach (var type in FindModTypes(assembly))
+                {
+                    try
+                    {
+                        var mod = Activator.CreateInstance(type) as MerlinMod;
+                        mod.OnLoad();
+                        Mods.Add(mod);
+                        Log("Mod File loaded: " + path, false);
+                    }
+                    catch (Exception e)
+                    {
+                        Log("error", false);
+                    }
+                }
+            }catch(Exception e)
+            {
+                Log("Err_Message: " + e.Message, false);
+                Log("Err_Source: " + e.Source, false);
+                Log("Err_Stacktrace: " + e.StackTrace, false);
             }
         }
 
