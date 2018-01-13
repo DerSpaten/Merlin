@@ -10,6 +10,7 @@ namespace Merlin.Hooks
         [Hook("Before", "", "GameState", "Start")]
         public static void GameStateStart(GameState self)
         {
+            Merlin.LoadDomain();
             Merlin.LoadMods();
         }
 

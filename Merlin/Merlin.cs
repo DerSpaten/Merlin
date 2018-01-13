@@ -10,19 +10,41 @@ namespace Merlin
 {
     static class Merlin
     {
+        public static AppDomain subdomain;
+        
+
         public static List<MerlinMod> Mods = new List<MerlinMod>();
+
+        public static void AfterLoad()
+        {
+            foreach (MerlinMod mod in Mods)
+            {
+                mod.AfterLoad();
+            }
+        }
+
+        public static void LoadDomain()
+        {
+            subdomain = AppDomain.CreateDomain("subdomain",null,AppDomain.CurrentDomain.BaseDirectory,"",false);
+        }
+        public static void UnloadMods()
+        {
+            AppDomain.Unload(subdomain);
+        }
 
         public static void LoadMods()
         {
+            
             Log("Merlin Initialized.", true);
 
             var listOfAllDlls = GetModFilesOf(GetModsPath());
 
             foreach(var modfile in listOfAllDlls)
             {
-                Log("Loading Mod File: " + modfile, false);
                 LoadModFile(modfile);
             }
+
+            
         }
 
 
@@ -106,22 +128,17 @@ namespace Merlin
 
         private static void LoadModFile(string path)
         {
-                var assembly = Assembly.LoadFrom(path);
+            var assembly = Assembly.LoadFrom(path);
+            subdomain.Load(assembly.GetName());
+
             try
             {
                 foreach (var type in FindModTypes(assembly))
                 {
-                    try
-                    {
                         var mod = Activator.CreateInstance(type) as MerlinMod;
                         mod.OnLoad();
                         Mods.Add(mod);
                         Log("Mod File loaded: " + path, false);
-                    }
-                    catch (Exception e)
-                    {
-                        Log("error", false);
-                    }
                 }
             }catch(Exception e)
             {
@@ -133,7 +150,7 @@ namespace Merlin
 
         private static IEnumerable<Type> FindModTypes(Assembly assembly)
         {
-            return assembly.GetTypes().Where(t => typeof(MerlinMod).IsAssignableFrom(t));
+                return assembly.GetTypes().Where(t => typeof(MerlinMod).IsAssignableFrom(t));
         }
 
         public static void Dispatch(Action<MerlinMod> action)
